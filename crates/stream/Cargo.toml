@@ -1,0 +1,12 @@
+[package]
+name = "worldspace-stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "World partition, cell streaming, LOD budgets, async asset loading"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

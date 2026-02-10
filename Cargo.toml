@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/kernel",
+    "crates/persist",
+    "crates/stream",
+    "crates/author",
+    "crates/render",
+    "crates/input",
+    "crates/tools",
+    "crates/common",
+    "apps/worldspace-desktop",
+    "apps/worldspace-cli",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/default-user/World-Engine"
+
+[workspace.dependencies]
+# Shared dependencies across workspace crates
+uuid = { version = "1", features = ["v4", "serde"] }
+glam = { version = "0.29", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_cbor = "0.11"
+serde_yaml = "0.9"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+
+# Workspace crate cross-references
+worldspace-kernel = { path = "crates/kernel" }
+worldspace-persist = { path = "crates/persist" }
+worldspace-stream = { path = "crates/stream" }
+worldspace-author = { path = "crates/author" }
+worldspace-render = { path = "crates/render" }
+worldspace-input = { path = "crates/input" }
+worldspace-tools = { path = "crates/tools" }
+worldspace-common = { path = "crates/common" }

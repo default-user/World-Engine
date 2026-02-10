@@ -1,0 +1,25 @@
+# Rendering
+
+The rendering module provides a renderer-agnostic interface with a wgpu backend.
+
+## Design
+
+- **Adapter pattern:** The render module defines traits; backends implement them.
+- **wgpu backend:** Initial backend using the wgpu crate for cross-platform GPU access.
+- **Read-only world access:** The renderer derives visual state from world state but never mutates it.
+
+## Invariants
+
+- Renderer cannot mutate world truth directly.
+- Render state derives from world state and view parameters.
+
+## Note on Photorealism
+
+v0.1 does not reimplement photoreal rendering from scratch. Photorealism is achieved through
+asset quality, lighting model improvements, and later renderer plugins. The focus is on correct
+world truth, persistence, authoring, and a competent renderer adapter.
+
+## Status
+
+- **M0:** Crate scaffolding.
+- **M1:** Basic renderer wiring, desktop window with camera.

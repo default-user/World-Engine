@@ -1,0 +1,28 @@
+# Benchmarks
+
+## Methodology
+
+- **Criterion benches** for hot paths (kernel stepping, entity operations, serialization).
+- **Frame timing capture** in the desktop app for render and simulation budgets.
+- **Streaming hitch detection** harness to measure cell load/unload latency.
+
+## Benchmark Targets
+
+| Path | Metric | Target |
+|------|--------|--------|
+| `kernel::World::step` | Throughput | Baseline established in M1 |
+| `kernel::World::spawn` | Latency | Baseline established in M1 |
+| `persist::snapshot` | Serialize/deserialize | Baseline established in M2 |
+| `stream::cell_load` | Latency, hitch count | Baseline established in M4 |
+
+## Running Benchmarks
+
+```bash
+cargo bench --workspace
+```
+
+## Status
+
+- **M0:** Methodology documented.
+- **M1+:** Criterion benches added per module.
+- **M4:** Streaming hitch detection harness.

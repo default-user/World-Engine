@@ -1,0 +1,15 @@
+[package]
+name = "worldspace-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI tool for worldspace operations: inspect, validate, convert"
+
+[dependencies]
+worldspace-kernel = { workspace = true }
+worldspace-persist = { workspace = true }
+worldspace-common = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

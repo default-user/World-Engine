@@ -1,0 +1,12 @@
+[package]
+name = "worldspace-author"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "In-world authoring tools: non-destructive editing, undo/redo, commit"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
