@@ -1,0 +1,28 @@
+# In-World Authoring
+
+Authoring tools allow users to modify the world from within, with full undo/redo support.
+
+## Design
+
+- **Non-destructive edits:** All operations are reversible by default.
+- **Event records:** Every authoring operation produces an event for persistence and replay.
+- **Commit model:** Edits accumulate in a working set and can be committed with a name.
+- **Undo/redo stack:** Standard linear undo with redo support.
+
+## Planned Operations (M3)
+
+- Place object
+- Delete object
+- Transform object (move, rotate, scale)
+- Undo / Redo
+- Commit edit block
+
+## Invariants
+
+- All authoring ops are reversible.
+- Every authoring op produces an event record.
+
+## Status
+
+- **M0:** Crate scaffolding.
+- **M3:** Place, delete, transform, undo/redo, commit, event records.

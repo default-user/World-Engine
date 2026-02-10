@@ -1,0 +1,26 @@
+# Streaming
+
+Streaming manages world partition, cell loading/unloading, and LOD budgets.
+
+## Design
+
+- **World partition grid:** Fixed-size cells covering the world.
+- **Camera-relative streaming:** Cells load/unload based on distance from the active camera.
+- **Async asset loading:** Cell data loads asynchronously to avoid frame hitches.
+- **LOD budgets:** Level-of-detail transitions managed per cell.
+
+## Terrain (v0.1)
+
+- Heightfield chunks (256x256 samples).
+- Compressed per-chunk storage.
+- Voxel hybrid deferred to later milestones.
+
+## Invariants
+
+- No frame hitching by design goal; measure and regress.
+- Cells load/unload without corrupting world truth.
+
+## Status
+
+- **M0:** Crate scaffolding.
+- **M4:** Terrain chunks, partition grid, cell streaming, perf benchmarks.

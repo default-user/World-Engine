@@ -1,0 +1,21 @@
+# VR Mode
+
+VR is an optional embodiment mode, gated behind `cargo feature = vr`.
+
+## Design
+
+- **Shared action graph:** VR input maps to the same `Action` enum as desktop input.
+- **No kernel fork:** VR does not create a separate world kernel or persistence path.
+- **Feature flag:** `cargo build --features vr` enables VR-specific code.
+- **Comfort locomotion:** Smooth and teleport locomotion options.
+- **Build mode in VR:** Same authoring operations as desktop, different interaction model.
+
+## Invariants
+
+- Same action graph for Desktop and VR.
+- VR feature flag is optional and does not fork world logic.
+
+## Status
+
+- **M0:** Feature flag defined in `worldspace-input`.
+- **M5:** VR input mapping, comfort locomotion, build-mode, quality profiles.

@@ -1,0 +1,30 @@
+# Security & Integrity
+
+## Threat Model
+
+### Data Corruption
+
+- **Snapshot integrity:** Content-addressed snapshots can be verified on load.
+- **Event log integrity:** Hashed event segments detect tampering or truncation.
+- **Rollback safety:** Rollback operations reconstruct state deterministically from verified data.
+
+### Rollback Abuse
+
+- **Edit branches:** Named branches allow experimentation without affecting the main timeline.
+- **Commit model:** Explicit commits prevent accidental state loss.
+
+### Provenance
+
+- **Event records:** Every mutation is recorded with timestamp and source.
+- **Audit trail:** The event log provides a complete history of world changes.
+
+## Non-Goals (v0.1)
+
+- Network security (no multiplayer in v0.1).
+- DRM or content protection.
+- Mass surveillance or always-on capture.
+
+## Status
+
+- **M0:** Document the threat model.
+- **M2:** Implement snapshot and event log integrity checks.

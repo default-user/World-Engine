@@ -1,0 +1,21 @@
+# Persistence
+
+Persistence provides durable world state through snapshots and an append-only event log.
+
+## Design
+
+- **Snapshots:** Content-addressed CBOR blobs capturing full world state at a point in time.
+- **Event log:** Append-only CBOR segments recording every mutation since the last snapshot.
+- **Rollback:** Reconstruct prior state by loading a snapshot and replaying events.
+- **Branching:** Create named edit branches for non-destructive experimentation.
+
+## Invariants
+
+- Event log is append-only.
+- Snapshots are content-addressed and verifiable.
+- Rollback reconstructs prior state via snapshot + log replay.
+
+## Status
+
+- **M0:** Crate scaffolding.
+- **M2:** WorldManifest, RegionSnapshot, EventLog, save/load/rollback, golden tests.

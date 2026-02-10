@@ -1,0 +1,12 @@
+[package]
+name = "worldspace-tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Developer tooling: world inspector, timeline scrubber, profiling hooks"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,16 @@
+[package]
+name = "worldspace-input"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Desktop and optional VR input mapped to shared action graph"
+
+[features]
+default = []
+vr = []
+
+[dependencies]
+worldspace-common = { workspace = true }
+glam = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

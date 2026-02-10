@@ -1,0 +1,46 @@
+# Architecture
+
+## Thesis
+
+One world kernel, two embodiment modes. Desktop is primary. VR is a second input and camera
+modality that shares the same world truth, persistence, and authoring operations.
+
+## Module Map
+
+| Crate | Purpose | Milestone |
+|-------|---------|-----------|
+| `worldspace-common` | Shared types (`EntityId`, `Transform`) | M0 |
+| `worldspace-kernel` | World state, entities, simulation stepping | M1 |
+| `worldspace-persist` | Snapshot + event log, rollback | M2 |
+| `worldspace-author` | Non-destructive editing, undo/redo | M3 |
+| `worldspace-stream` | World partition, cell streaming | M4 |
+| `worldspace-render` | Renderer-agnostic interface | M1 |
+| `worldspace-input` | Action graph (Desktop + VR) | M1/M5 |
+| `worldspace-tools` | Inspector, profiling | M1+ |
+
+## Data Flow
+
+```
+Input (Desktop / VR)
+        │
+        ▼
+   Action Graph
+        │
+        ▼
+   World Kernel  ──►  Persistence (snapshot + event log)
+        │
+        ▼
+   Render Adapter  ──►  GPU (wgpu)
+```
+
+## Key Invariants
+
+1. World truth is kernel-owned. Renderers derive; they never mutate.
+2. Simulation step is deterministic given the same inputs.
+3. Event log is append-only. Rollback replays from snapshot.
+4. VR feature flag does not fork core modules.
+5. All authoring ops are reversible.
+
+## See Also
+
+- [ADR 0001: Architecture](/docs/md/ADR/0001-architecture.md)

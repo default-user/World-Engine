@@ -1,0 +1,20 @@
+[package]
+name = "worldspace-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Desktop application for the worldspace engine (primary embodiment)"
+
+[dependencies]
+worldspace-kernel = { workspace = true }
+worldspace-persist = { workspace = true }
+worldspace-stream = { workspace = true }
+worldspace-author = { workspace = true }
+worldspace-render = { workspace = true }
+worldspace-input = { workspace = true }
+worldspace-tools = { workspace = true }
+worldspace-common = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

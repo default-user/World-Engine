@@ -1,0 +1,33 @@
+# World Kernel
+
+The world kernel is the authoritative source of truth for all world state.
+
+## Responsibilities
+
+- Entity management (spawn, despawn, query)
+- Transform storage (position, rotation, scale)
+- Simulation stepping (deterministic mode with seeded RNG)
+- Replay hooks for testing and debugging
+
+## API Overview
+
+```rust
+use worldspace_kernel::World;
+use worldspace_common::Transform;
+
+let mut world = World::new();
+let id = world.spawn(Transform::default());
+world.step();
+assert_eq!(world.tick(), 1);
+```
+
+## Invariants
+
+- Simulation step is pure with respect to inputs for deterministic mode.
+- All state mutations flow through explicit operations.
+- No hidden global state.
+
+## Status
+
+- **M0:** Scaffolding with basic `World`, `EntityData`, spawn/despawn/step.
+- **M1:** Full entity model, component sparse sets, deterministic stepping, replay tests.

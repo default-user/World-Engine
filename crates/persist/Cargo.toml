@@ -1,0 +1,14 @@
+[package]
+name = "worldspace-persist"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Snapshot + event log persistence, rollback, branching edits"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+serde = { workspace = true }
+serde_cbor = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

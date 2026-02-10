@@ -1,0 +1,29 @@
+# World Engine Documentation
+
+Welcome to the World Engine documentation. World Engine is a desktop-first, persistent world
+space engine with VR as an optional embodiment mode.
+
+## Architecture at a Glance
+
+One world kernel, two embodiment modes. Desktop is primary. VR is a second input and camera
+modality that shares the same world truth, persistence, and authoring operations.
+
+## Guides
+
+- [Architecture](./architecture.mdx) — Core architecture and module overview
+- [World Kernel](./kernel.mdx) — World state, entities, simulation stepping
+- [Persistence](./persistence.mdx) — Snapshots, event log, rollback
+- [Authoring](./authoring.mdx) — In-world editing tools, undo/redo
+- [Streaming](./streaming.mdx) — World partition, cell streaming, LOD
+- [Rendering](./rendering.mdx) — Renderer adapter and wgpu backend
+- [VR Mode](./vr.mdx) — Optional VR embodiment
+- [Security & Integrity](./security-and-integrity.mdx) — Threat model, corruption protection
+- [Benchmarks](./benchmarks.mdx) — Performance methodology and results
+
+## Quick Start
+
+```bash
+cargo build --workspace
+cargo test --workspace
+cargo run -p worldspace-desktop
+```
