@@ -25,7 +25,6 @@ repository = "https://github.com/default-user/World-Engine"
 uuid = { version = "1", features = ["v4", "serde"] }
 glam = { version = "0.29", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
-serde_cbor = "0.11"
 serde_yaml = "0.9"
 thiserror = "2"
 tracing = "0.1"
