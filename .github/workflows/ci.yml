@@ -53,8 +53,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
-      - name: cargo deny check (verbose)
-        run: cargo deny check -c deny.toml -v
+      - name: cargo deny check
+        run: cargo deny --log-level info check -c deny.toml
 
   doc:
     name: Doc
