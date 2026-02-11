@@ -1,17 +1,28 @@
+# deny.toml
+# Cargo-deny policy for World-Engine
+# Conservative defaults, explicit allowlists
+
 [advisories]
 version = 2
 
 [licenses]
 version = 2
+confidence-threshold = 0.8
+
+# Allow common permissive licenses
 allow = [
     "MIT",
     "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
+    "Zlib",
     "Unicode-3.0",
     "Unicode-DFS-2016",
 ]
+
+exceptions = []
 
 [bans]
 multiple-versions = "warn"
