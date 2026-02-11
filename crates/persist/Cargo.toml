@@ -9,6 +9,5 @@ description = "Snapshot + event log persistence, rollback, branching edits"
 worldspace-common = { workspace = true }
 worldspace-kernel = { workspace = true }
 serde = { workspace = true }
-serde_cbor = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

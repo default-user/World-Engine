@@ -1,19 +1,23 @@
 # Migration: serde_cbor -> maintained CBOR crate
 
+## Status: COMPLETED
+
+serde_cbor was declared as a dependency but never used in source code (persist
+crate was a placeholder). The dependency was removed entirely from the workspace
+and from worldspace-persist/Cargo.toml. No replacement crate was needed since
+no CBOR encode/decode code existed yet.
+
+When persist is implemented in M2, use minicbor or ciborium directly instead of
+serde_cbor.
+
 ## Why
 cargo-deny fails on RUSTSEC-2021-0127 because serde_cbor is unmaintained and has no safe upgrade.
-Stage 1 adds a temporary ignore to unblock CI.
-Stage 2 must remove serde_cbor and delete the ignore.
 
 ## Where
-Introduced by: worldspace-persist -> worldspace-cli, worldspace-desktop.
+Was introduced by: worldspace-persist -> worldspace-cli, worldspace-desktop.
 
-## Replacement candidates
-- minicbor (default choice)
-- ciborium
-
-## Success criteria
-- serde_cbor absent from Cargo.lock
-- deny.toml has no ignore for RUSTSEC-2021-0127
-- cargo deny passes
-- Persist roundtrip tests pass
+## Resolution
+- serde_cbor removed from workspace Cargo.toml
+- serde_cbor removed from crates/persist/Cargo.toml
+- deny.toml ignore for RUSTSEC-2021-0127 removed
+- No code changes required (dependency was unused)
