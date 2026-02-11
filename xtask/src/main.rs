@@ -11,7 +11,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Run all checks: fmt, clippy, tests
+    /// Run all checks: fmt, clippy, tests, deny, doc
     Check,
     /// Run cargo fmt --check on all crates
     Fmt,
@@ -19,6 +19,10 @@ enum Commands {
     Clippy,
     /// Run all tests
     Test,
+    /// Run cargo deny check
+    Deny,
+    /// Build rustdoc for the workspace
+    Doc,
     /// Build the entire workspace
     Build,
 }
@@ -31,10 +35,14 @@ fn main() -> Result<()> {
             run_fmt()?;
             run_clippy()?;
             run_tests()?;
+            run_deny()?;
+            run_doc()?;
         }
         Commands::Fmt => run_fmt()?,
         Commands::Clippy => run_clippy()?,
         Commands::Test => run_tests()?,
+        Commands::Deny => run_deny()?,
+        Commands::Doc => run_doc()?,
         Commands::Build => run_build()?,
     }
 
@@ -77,6 +85,28 @@ fn run_tests() -> Result<()> {
         .status()?;
     if !status.success() {
         anyhow::bail!("cargo test failed");
+    }
+    Ok(())
+}
+
+fn run_deny() -> Result<()> {
+    println!("==> Running cargo deny check (licenses bans sources)");
+    let status = Command::new("cargo")
+        .args(["deny", "check", "licenses", "bans", "sources"])
+        .status()?;
+    if !status.success() {
+        anyhow::bail!("cargo deny check failed");
+    }
+    Ok(())
+}
+
+fn run_doc() -> Result<()> {
+    println!("==> Running cargo doc");
+    let status = Command::new("cargo")
+        .args(["doc", "--workspace", "--no-deps"])
+        .status()?;
+    if !status.success() {
+        anyhow::bail!("cargo doc failed");
     }
     Ok(())
 }
