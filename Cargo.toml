@@ -34,11 +34,11 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 
 # Workspace crate cross-references
-worldspace-kernel = { path = "crates/kernel" }
-worldspace-persist = { path = "crates/persist" }
-worldspace-stream = { path = "crates/stream" }
-worldspace-author = { path = "crates/author" }
-worldspace-render = { path = "crates/render" }
-worldspace-input = { path = "crates/input" }
-worldspace-tools = { path = "crates/tools" }
-worldspace-common = { path = "crates/common" }
+worldspace-kernel = { path = "crates/kernel", version = "0.1.0" }
+worldspace-persist = { path = "crates/persist", version = "0.1.0" }
+worldspace-stream = { path = "crates/stream", version = "0.1.0" }
+worldspace-author = { path = "crates/author", version = "0.1.0" }
+worldspace-render = { path = "crates/render", version = "0.1.0" }
+worldspace-input = { path = "crates/input", version = "0.1.0" }
+worldspace-tools = { path = "crates/tools", version = "0.1.0" }
+worldspace-common = { path = "crates/common", version = "0.1.0" }
