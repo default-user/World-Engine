@@ -5,6 +5,13 @@
 [advisories]
 version = 2
 
+# TEMP: serde_cbor is unmaintained (RUSTSEC-2021-0127) ... no safe upgrade exists.
+# This ignore is a short-lived unblocker only.
+# Stage 2: migrate worldspace-persist off serde_cbor to minicbor or ciborium ... then remove this ignore.
+ignore = [
+    "RUSTSEC-2021-0127",
+]
+
 [licenses]
 version = 2
 confidence-threshold = 0.8
