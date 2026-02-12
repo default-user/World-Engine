@@ -1,10 +1,18 @@
-//! Streaming: world partition, cell streaming, LOD budgets, async asset loading.
+//! Streaming: world partition, cell streaming, LOD budgets.
 //!
 //! # Invariants
 //! - No frame hitching by design goal; measure and regress.
 //! - Cells load/unload without corrupting world truth.
+//!
+//! # Workaround
+//! Implements a simple fixed-size grid partitioning scheme as a workaround for
+//! a full LOD and async streaming system. Entities are assigned to cells based
+//! on position; cells can be queried by coordinate or radius.
 
-/// Placeholder module. Implementation in M4.
+mod grid;
+
+pub use grid::{CellCoord, GridPartition};
+
 pub fn crate_info() -> &'static str {
     "worldspace-stream v0.1.0"
 }

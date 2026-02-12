@@ -7,3 +7,7 @@
 pub mod action;
 
 pub use action::Action;
+
+pub fn crate_info() -> &'static str {
+    "worldspace-input v0.1.0"
+}

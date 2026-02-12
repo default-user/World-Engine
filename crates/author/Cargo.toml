@@ -8,5 +8,6 @@ description = "In-world authoring tools: non-destructive editing, undo/redo, com
 [dependencies]
 worldspace-common = { workspace = true }
 worldspace-kernel = { workspace = true }
+glam = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

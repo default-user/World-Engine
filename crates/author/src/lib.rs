@@ -4,7 +4,10 @@
 //! - All authoring ops are reversible.
 //! - Every authoring op produces an event record.
 
-/// Placeholder module. Implementation in M3.
+mod editor;
+
+pub use editor::{EditCommand, EditError, Editor};
+
 pub fn crate_info() -> &'static str {
     "worldspace-author v0.1.0"
 }

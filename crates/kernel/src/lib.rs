@@ -6,4 +6,4 @@
 
 pub mod world;
 
-pub use world::World;
+pub use world::{EntityData, World, WorldEvent};

@@ -1,9 +1,12 @@
-//! Developer Tooling: world inspector, timeline scrubber, profiling hooks, benchmarks.
+//! Developer Tooling: world inspector, profiling hooks.
 //!
 //! # Invariants
 //! - Tools are first-class and tested where possible.
 
-/// Placeholder module. Implementation in M1+.
+mod inspector;
+
+pub use inspector::WorldInspector;
+
 pub fn crate_info() -> &'static str {
     "worldspace-tools v0.1.0"
 }
