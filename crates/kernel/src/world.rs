@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use worldspace_common::{EntityId, Transform};
 
 /// An event record produced by every mutation to the world.
@@ -27,11 +27,12 @@ pub enum WorldEvent {
 /// All mutations go through explicit operations. The kernel owns the truth;
 /// renderers, persistence, and authoring tools derive from it.
 ///
-/// Supports deterministic replay via seeded RNG — given the same seed and
+/// Uses BTreeMap for deterministic iteration order across all platforms.
+/// Supports deterministic replay via seeded RNG ... given the same seed and
 /// sequence of operations, the world will produce identical states.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct World {
-    entities: HashMap<EntityId, EntityData>,
+    entities: BTreeMap<EntityId, EntityData>,
     tick: u64,
     /// Seed for deterministic RNG. Incremented each step for reproducibility.
     seed: u64,
@@ -85,9 +86,14 @@ impl World {
         &self.event_log
     }
 
-    /// Read-only access to all entities.
-    pub fn entities(&self) -> &HashMap<EntityId, EntityData> {
+    /// Read-only access to all entities (BTreeMap for deterministic iteration).
+    pub fn entities(&self) -> &BTreeMap<EntityId, EntityData> {
         &self.entities
+    }
+
+    /// Set the tick directly (used for snapshot restore).
+    pub fn set_tick(&mut self, tick: u64) {
+        self.tick = tick;
     }
 
     /// Spawn a new entity with the given transform. Returns its id.
@@ -182,9 +188,37 @@ impl World {
         }
         world
     }
+
+    /// Compute a deterministic hash of the world state for comparison.
+    /// Uses canonical (BTreeMap) iteration order.
+    pub fn state_hash(&self) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325; // FNV offset basis
+        let mix = |h: &mut u64, bytes: &[u8]| {
+            for &b in bytes {
+                *h ^= b as u64;
+                *h = h.wrapping_mul(0x0100_0000_01b3);
+            }
+        };
+        mix(&mut h, &self.tick.to_le_bytes());
+        mix(&mut h, &self.seed.to_le_bytes());
+        for (id, data) in &self.entities {
+            mix(&mut h, id.0.as_bytes());
+            mix(&mut h, &data.transform.position.x.to_le_bytes());
+            mix(&mut h, &data.transform.position.y.to_le_bytes());
+            mix(&mut h, &data.transform.position.z.to_le_bytes());
+            mix(&mut h, &data.transform.rotation.x.to_le_bytes());
+            mix(&mut h, &data.transform.rotation.y.to_le_bytes());
+            mix(&mut h, &data.transform.rotation.z.to_le_bytes());
+            mix(&mut h, &data.transform.rotation.w.to_le_bytes());
+            mix(&mut h, &data.transform.scale.x.to_le_bytes());
+            mix(&mut h, &data.transform.scale.y.to_le_bytes());
+            mix(&mut h, &data.transform.scale.z.to_le_bytes());
+        }
+        h
+    }
 }
 
-/// Splitmix64 — a fast, high-quality deterministic PRNG step function.
+/// Splitmix64 ... a fast, high-quality deterministic PRNG step function.
 /// Used to advance the world seed each tick in a reproducible way.
 fn splitmix64(mut state: u64) -> u64 {
     state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
@@ -300,5 +334,30 @@ mod tests {
             replayed.get(id).unwrap().transform.position,
             w.get(id).unwrap().transform.position
         );
+    }
+
+    #[test]
+    fn state_hash_deterministic() {
+        let mut w1 = World::with_seed(42);
+        let mut w2 = World::with_seed(42);
+        let id1 = w1.spawn(Transform::default());
+        w2.spawn_with_id(id1, Transform::default());
+        w1.step();
+        w2.step();
+        assert_eq!(w1.state_hash(), w2.state_hash());
+    }
+
+    #[test]
+    fn btreemap_gives_deterministic_iteration() {
+        let mut w = World::with_seed(0);
+        let mut ids = Vec::new();
+        for _ in 0..100 {
+            ids.push(w.spawn(Transform::default()));
+        }
+        // BTreeMap iterates in Ord order of EntityId
+        let entity_keys: Vec<EntityId> = w.entities().keys().copied().collect();
+        let mut sorted = entity_keys.clone();
+        sorted.sort();
+        assert_eq!(entity_keys, sorted);
     }
 }

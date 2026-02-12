@@ -1,0 +1,16 @@
+[package]
+name = "worldspace-render-wgpu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "wgpu-based render backend: grid floor, instanced cubes, camera controls"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+worldspace-ecs = { workspace = true }
+worldspace-render = { workspace = true }
+glam = { workspace = true }
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+tracing = { workspace = true }

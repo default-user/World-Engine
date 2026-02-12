@@ -17,10 +17,18 @@ pub enum Action {
     Select(EntityId),
     /// Deselect the current selection.
     Deselect,
+    /// Translate the selected entity by a delta.
+    TranslateSelected(Vec3),
     /// Undo the last authoring operation.
     Undo,
     /// Redo the last undone operation.
     Redo,
+    /// Save the world to disk.
+    Save,
+    /// Load the world from disk.
+    Load,
+    /// Toggle the inspector panel.
+    ToggleInspector,
     /// No-op (used for input mapping that hasn't been bound yet).
     Noop,
 }
@@ -54,5 +62,11 @@ mod tests {
     fn action_undo_redo() {
         assert!(matches!(Action::Undo, Action::Undo));
         assert!(matches!(Action::Redo, Action::Redo));
+    }
+
+    #[test]
+    fn action_save_load() {
+        assert!(matches!(Action::Save, Action::Save));
+        assert!(matches!(Action::Load, Action::Load));
     }
 }

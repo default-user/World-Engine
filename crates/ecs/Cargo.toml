@@ -1,0 +1,13 @@
+[package]
+name = "worldspace-ecs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Minimal deterministic ECS-style component model for the world kernel"
+
+[dependencies]
+worldspace-common = { workspace = true }
+worldspace-kernel = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

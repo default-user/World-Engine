@@ -1,21 +1,17 @@
 [package]
-name = "worldspace-persist"
+name = "worldspace-assets"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Snapshot + event log persistence, rollback, branching edits"
+description = "Asset pipeline scaffolding: registry, content-addressed handles, glTF import stub"
 
 [dependencies]
 worldspace-common = { workspace = true }
-worldspace-kernel = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-ciborium = { workspace = true }
-zstd = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-glam = { workspace = true }

@@ -9,8 +9,10 @@
 //! a full LOD and async streaming system. Entities are assigned to cells based
 //! on position; cells can be queried by coordinate or radius.
 
+mod budget;
 mod grid;
 
+pub use budget::{FrameTimer, StreamConfig, StreamState, StreamStats};
 pub use grid::{CellCoord, GridPartition};
 
 pub fn crate_info() -> &'static str {
