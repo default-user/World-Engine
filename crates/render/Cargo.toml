@@ -8,5 +8,6 @@ description = "Renderer-agnostic interface with wgpu backend"
 [dependencies]
 worldspace-common = { workspace = true }
 worldspace-kernel = { workspace = true }
+glam = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

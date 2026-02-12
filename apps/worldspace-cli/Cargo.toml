@@ -8,7 +8,13 @@ description = "CLI tool for worldspace operations: inspect, validate, convert"
 [dependencies]
 worldspace-kernel = { workspace = true }
 worldspace-persist = { workspace = true }
+worldspace-render = { workspace = true }
+worldspace-author = { workspace = true }
+worldspace-stream = { workspace = true }
+worldspace-tools = { workspace = true }
+worldspace-input = { workspace = true }
 worldspace-common = { workspace = true }
+glam = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 tracing = { workspace = true }

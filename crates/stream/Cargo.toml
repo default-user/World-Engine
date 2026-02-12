@@ -8,5 +8,6 @@ description = "World partition, cell streaming, LOD budgets, async asset loading
 [dependencies]
 worldspace-common = { workspace = true }
 worldspace-kernel = { workspace = true }
+glam = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
