@@ -360,4 +360,65 @@ mod tests {
         sorted.sort();
         assert_eq!(entity_keys, sorted);
     }
+
+    /// Phase I: Determinism boundary – replay_equivalence
+    /// Given the same events replayed into a fresh world, the state_hash must match.
+    #[test]
+    fn replay_equivalence() {
+        let mut world = World::with_seed(42);
+        let id = world.spawn(Transform::default());
+        world.set_transform(
+            id,
+            Transform {
+                position: glam::Vec3::new(5.0, 0.0, 0.0),
+                ..Transform::default()
+            },
+        );
+        world.step();
+        world.step();
+
+        let events = world.events().to_vec();
+        let replayed = World::replay(&events);
+
+        assert_eq!(world.state_hash(), replayed.state_hash());
+        assert_eq!(world.tick(), replayed.tick());
+        assert_eq!(world.seed(), replayed.seed());
+        assert_eq!(world.entity_count(), replayed.entity_count());
+    }
+
+    /// Phase I: Determinism boundary – replay with many operations
+    #[test]
+    fn replay_equivalence_complex() {
+        let mut world = World::with_seed(99);
+        let mut ids = Vec::new();
+        for i in 0..20 {
+            let id = world.spawn(Transform {
+                position: glam::Vec3::new(i as f32 * 2.0, 0.0, i as f32),
+                ..Transform::default()
+            });
+            ids.push(id);
+        }
+        // Move some entities
+        for i in (0..20).step_by(3) {
+            world.set_transform(
+                ids[i],
+                Transform {
+                    position: glam::Vec3::new(100.0, i as f32, 0.0),
+                    ..Transform::default()
+                },
+            );
+        }
+        // Despawn some
+        for i in (1..20).step_by(5) {
+            world.despawn(ids[i]);
+        }
+        // Step several ticks
+        for _ in 0..10 {
+            world.step();
+        }
+
+        let events = world.events().to_vec();
+        let replayed = World::replay(&events);
+        assert_eq!(world.state_hash(), replayed.state_hash());
+    }
 }

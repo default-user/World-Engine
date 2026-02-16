@@ -463,4 +463,62 @@ mod tests {
         assert_eq!(store.meta().world_schema_version, WORLD_SCHEMA_VERSION);
         assert_eq!(store.meta().event_schema_version, EVENT_SCHEMA_VERSION);
     }
+
+    /// Phase I: persistence round-trip preserves state_hash
+    #[test]
+    fn persistence_roundtrip_hash_equivalence() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("world_data");
+        let mut store = WorldStore::open(&path).unwrap();
+
+        let mut world = World::with_seed(42);
+        let _id1 = world.spawn(Transform::default());
+        let _id2 = world.spawn(Transform {
+            position: glam::Vec3::new(10.0, 5.0, -3.0),
+            ..Transform::default()
+        });
+        world.step();
+        world.step();
+        world.step();
+
+        let hash_before = world.state_hash();
+        store.take_snapshot(&world).unwrap();
+
+        // Reopen and load
+        let store2 = WorldStore::open(&path).unwrap();
+        let loaded = store2.load_latest().unwrap();
+        assert_eq!(loaded.state_hash(), hash_before);
+    }
+
+    /// Phase I: schema version mismatch is fail-closed
+    #[test]
+    fn schema_mismatch_fail_closed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("world_data");
+
+        // Create a valid store
+        let _store = WorldStore::open(&path).unwrap();
+
+        // Tamper with the meta file to have a wrong version
+        let meta_path = path.join("world.meta.json");
+        let mut meta: WorldMeta =
+            serde_json::from_reader(std::fs::File::open(&meta_path).unwrap()).unwrap();
+        meta.world_schema_version = 999;
+        serde_json::to_writer_pretty(std::fs::File::create(&meta_path).unwrap(), &meta).unwrap();
+
+        // Must fail to open
+        let result = WorldStore::open(&path);
+        assert!(result.is_err());
+        match result {
+            Err(StoreError::SchemaMismatch {
+                file_version,
+                expected_version,
+            }) => {
+                assert_eq!(file_version, 999);
+                assert_eq!(expected_version, WORLD_SCHEMA_VERSION);
+            }
+            Err(e) => panic!("expected SchemaMismatch, got: {e}"),
+            Ok(_) => panic!("expected error, got Ok"),
+        }
+    }
 }

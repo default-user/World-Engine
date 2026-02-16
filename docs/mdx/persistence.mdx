@@ -1,21 +1,61 @@
 # Persistence
 
-Persistence provides durable world state through snapshots and an append-only event log.
+Persistence provides durable world state through snapshots and an append-only event log
+with integrity verification.
 
 ## Design
 
-- **Snapshots:** Content-addressed CBOR blobs capturing full world state at a point in time.
-- **Event log:** Append-only CBOR segments recording every mutation since the last snapshot.
+- **Snapshots:** CBOR+zstd compressed blobs capturing full world state at a point in time.
+  Each snapshot includes a SHA-256 hash for integrity verification.
+- **Event log:** Append-only CBOR+zstd segments recording every mutation since the last snapshot.
+- **Hash chain:** An integrity manifest tracks SHA-256 hashes of all snapshot and event files
+  in a chain, enabling tamper detection.
+- **Schema versioning:** `WORLD_SCHEMA_VERSION` and `EVENT_SCHEMA_VERSION` are recorded in
+  `world.meta.json`. The store refuses to open (fail-closed) if versions don't match.
 - **Rollback:** Reconstruct prior state by loading a snapshot and replaying events.
-- **Branching:** Create named edit branches for non-destructive experimentation.
+
+## File Layout
+
+```
+world_data/
+  world.meta.json              - Metadata: schema versions, counts
+  snapshots/
+    000001.snapshot.cbor.zst   - CBOR+zstd compressed snapshots
+  events/
+    000001.log.cbor.zst        - CBOR+zstd compressed event log segments
+  integrity/
+    manifest.json              - SHA-256 hash chain manifest
+```
+
+## API
+
+```rust
+// Open or create a world store
+let mut store = WorldStore::open("world_data")?;
+
+// Save a snapshot
+store.take_snapshot(&world)?;
+
+// Append events
+store.append_events(&events)?;
+
+// Load the latest world state
+let world = store.load_latest()?;
+
+// Verify integrity of all stored files
+store.verify_integrity()?;
+```
 
 ## Invariants
 
 - Event log is append-only.
-- Snapshots are content-addressed and verifiable.
+- Snapshots are content-addressed and verifiable via SHA-256.
 - Rollback reconstructs prior state via snapshot + log replay.
+- Schema version mismatch is fail-closed (never silently loads incompatible data).
+- Hash chain integrity check detects corruption or tampering.
 
 ## Status
 
 - **M0:** Crate scaffolding.
-- **M2:** WorldManifest, RegionSnapshot, EventLog, save/load/rollback, golden tests.
+- **Gapclose:** `WorldStore` with CBOR+zstd persistence, SHA-256 hash chains,
+  schema versioning, integrity verification, snapshot/load round-trip tests.
