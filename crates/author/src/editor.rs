@@ -261,4 +261,72 @@ mod tests {
         let fake_id = EntityId::new();
         assert!(editor.despawn(&mut world, fake_id).is_err());
     }
+
+    /// Phase I: Determinism boundary – undo_redo_equivalence
+    /// After edit → undo → redo, the world state_hash must match the post-edit hash.
+    #[test]
+    fn undo_redo_equivalence() {
+        let mut world = World::with_seed(7);
+        let mut editor = Editor::new();
+
+        let id = editor.spawn(&mut world, Transform::default());
+        let moved = Transform {
+            position: Vec3::new(10.0, 0.0, 0.0),
+            ..Transform::default()
+        };
+        editor.set_transform(&mut world, id, moved).unwrap();
+
+        let hash_after_edit = world.state_hash();
+
+        editor.undo(&mut world); // undo set_transform
+        let hash_after_undo = world.state_hash();
+        assert_ne!(hash_after_undo, hash_after_edit);
+
+        editor.redo(&mut world); // redo set_transform
+        assert_eq!(world.state_hash(), hash_after_edit);
+    }
+
+    /// Phase I: Determinism boundary – multiple undo/redo cycles preserve hash
+    #[test]
+    fn undo_redo_equivalence_multi_cycle() {
+        let mut world = World::with_seed(42);
+        let mut editor = Editor::new();
+
+        let id1 = editor.spawn(&mut world, Transform::default());
+        let id2 = editor.spawn(
+            &mut world,
+            Transform {
+                position: Vec3::new(5.0, 0.0, 0.0),
+                ..Transform::default()
+            },
+        );
+
+        let hash_after_spawns = world.state_hash();
+
+        editor.set_transform(
+            &mut world,
+            id1,
+            Transform {
+                position: Vec3::new(1.0, 2.0, 3.0),
+                ..Transform::default()
+            },
+        )
+        .unwrap();
+
+        let hash_after_move = world.state_hash();
+
+        editor.despawn(&mut world, id2).unwrap();
+
+        // Undo despawn → should have id2 back
+        editor.undo(&mut world);
+        assert_eq!(world.state_hash(), hash_after_move);
+
+        // Undo set_transform
+        editor.undo(&mut world);
+        assert_eq!(world.state_hash(), hash_after_spawns);
+
+        // Redo set_transform
+        editor.redo(&mut world);
+        assert_eq!(world.state_hash(), hash_after_move);
+    }
 }

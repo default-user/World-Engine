@@ -1,0 +1,296 @@
+# Determinism Boundary
+
+This document specifies the determinism boundary of the World Engine: the precise
+dividing line between state that is reproducible across runs, platforms, and
+replay sessions, and state that is allowed to vary.
+
+## Inside the Boundary
+
+Everything inside the determinism boundary is subject to the **replay invariant**
+(defined below). These values are owned by the kernel and persisted through the
+snapshot + event log system.
+
+| State | Location | Notes |
+|-------|----------|-------|
+| Entity map | `World::entities` (`BTreeMap<EntityId, EntityData>`) | `BTreeMap` guarantees deterministic iteration order by `EntityId` (`Ord` on `Uuid`). |
+| Entity transforms | `EntityData::transform` (`position: Vec3`, `rotation: Quat`, `scale: Vec3`) | Serialized field-by-field in `to_le_bytes()` order for hashing. No floating-point arithmetic reordering. |
+| Event log | `World::event_log` (`Vec<WorldEvent>`) | Append-only record of `Spawned`, `Despawned`, `TransformUpdated`, `Stepped`. Foundation for replay, undo/redo, and persistence. |
+| Tick counter | `World::tick` (`u64`) | Monotonically incremented by `World::step()`. |
+| RNG seed | `World::seed` (`u64`) | Advanced each tick via `splitmix64`. Given the same starting seed, the sequence is identical across all platforms. |
+| BTreeMap iteration order | Implicit | All iteration over `World::entities` uses `BTreeMap` ordered traversal. This is critical for `state_hash()` and `Snapshot::compute_hash()` to produce identical results. |
+| PRNG function | `splitmix64` | A single-state, non-floating-point PRNG step. Uses wrapping integer arithmetic only: `wrapping_add`, `wrapping_mul`, XOR, and right-shift. No platform-dependent behavior. |
+
+### splitmix64 reference
+
+```rust
+fn splitmix64(mut state: u64) -> u64 {
+    state = state.wrapping_add(0x9e3779b97f4a7c15);
+    let mut z = state;
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+    z ^ (z >> 31)
+}
+```
+
+### state_hash reference
+
+`World::state_hash()` computes a deterministic FNV-1a hash over the canonical
+state. It mixes, in order:
+
+1. `tick` (little-endian bytes)
+2. `seed` (little-endian bytes)
+3. For each entity in `BTreeMap` iteration order:
+   - `EntityId` UUID bytes
+   - `position.x`, `position.y`, `position.z` (little-endian `f32` bytes)
+   - `rotation.x`, `rotation.y`, `rotation.z`, `rotation.w` (little-endian `f32` bytes)
+   - `scale.x`, `scale.y`, `scale.z` (little-endian `f32` bytes)
+
+```rust
+pub fn state_hash(&self) -> u64 {
+    let mut h: u64 = 0xcbf29ce484222325; // FNV offset basis
+    let mix = |h: &mut u64, bytes: &[u8]| {
+        for &b in bytes {
+            *h ^= b as u64;
+            *h = h.wrapping_mul(0x0100000001b3);
+        }
+    };
+    mix(&mut h, &self.tick.to_le_bytes());
+    mix(&mut h, &self.seed.to_le_bytes());
+    for (id, data) in &self.entities {
+        mix(&mut h, id.0.as_bytes());
+        mix(&mut h, &data.transform.position.x.to_le_bytes());
+        // ... remaining transform fields ...
+    }
+    h
+}
+```
+
+## Outside the Boundary
+
+The following state is explicitly **not** part of the deterministic world and
+must never influence `World::state_hash()`, event replay, or snapshot content.
+
+| State | Owner | Rationale |
+|-------|-------|-----------|
+| Camera position / orientation | `FlyCamera` (`render-wgpu`) | Camera is a view concern. It exists outside the kernel; the comment in `camera.rs` states: "Camera motion is NOT deterministic -- it exists outside the kernel boundary." |
+| UI state | `Editor` undo/redo stacks, inspector panel, selection highlight | Editor stacks are local workflow state. They are not serialized into snapshots or the event log. |
+| Render frame timing | `dt` passed to `FlyCamera::move_*` | Frame delta is driven by vsync / OS scheduler and varies per machine. |
+| Window size | `FlyCamera::aspect`, `WgpuRenderer::resize` | Viewport dimensions are a display concern. |
+| Mouse / keyboard raw input | OS events consumed by `winit` | Raw input is mapped to `Action` variants before reaching the kernel. Actions are the determinism boundary for input. |
+| GPU state | `wgpu::Device`, `wgpu::Queue`, pipeline objects, buffers | All GPU resources are derived from kernel state each frame. They carry no authoritative data. |
+| Streaming cell load order | `GridPartition` (`HashMap<CellCoord, HashSet<EntityId>>`) | The grid partition uses `HashMap` (non-deterministic iteration) intentionally. Cell load order depends on camera proximity and frame budget, both of which are outside the boundary. The partition is rebuilt from kernel-owned entity positions on demand. |
+
+### Why raw input is outside
+
+The input system maps hardware events to `Action` enum variants (`Move`, `SpawnEntity`,
+`TranslateSelected`, `Undo`, `Redo`, etc.). The kernel and authoring layer consume
+`Action` values, never raw key/mouse events. This is the determinism firewall for input:
+the same sequence of `Action` values applied to the same starting state produces the
+same result, regardless of which embodiment mode (Desktop or VR) generated them.
+
+## The Replay Invariant
+
+> Given the same starting state (or an empty `World::new()`) and the same ordered
+> sequence of `WorldEvent` values replayed via `World::replay()`, the resulting
+> `World::state_hash()` **must** be identical.
+
+This is the single most important property of the engine. It guarantees that:
+
+- Persistence round-trips are lossless.
+- Undo/redo returns the world to a previously observed state.
+- Two machines replaying the same event log converge to the same world.
+- Test oracles can compare world state by a single `u64` hash.
+
+### Formal statement
+
+```text
+For all event sequences E and starting seeds S:
+
+  let w1 = { World::with_seed(S) | apply E directly }
+  let w2 = World::replay(E_recorded_from_w1)
+
+  assert w1.state_hash() == w2.state_hash()
+```
+
+## Verification Tests
+
+The determinism boundary is enforced by the following test patterns. Any change
+that breaks these tests has violated the boundary and must not be merged.
+
+### replay_equivalence
+
+Replay a recorded event sequence into a fresh world and compare the hash against
+the world that produced those events.
+
+```rust
+#[test]
+fn replay_equivalence() {
+    let mut world = World::with_seed(42);
+    let id = world.spawn(Transform::default());
+    world.set_transform(id, Transform {
+        position: Vec3::new(5.0, 0.0, 0.0),
+        ..Transform::default()
+    });
+    world.step();
+    world.step();
+
+    let events = world.events().to_vec();
+    let replayed = World::replay(&events);
+
+    assert_eq!(world.state_hash(), replayed.state_hash());
+}
+```
+
+This test validates that `World::replay()` is a faithful reconstruction of any
+sequence of spawn, despawn, transform update, and step operations.
+
+### undo_redo_equivalence
+
+Perform an edit, record the hash, undo, redo, and assert the hash is restored.
+
+```rust
+#[test]
+fn undo_redo_equivalence() {
+    let mut world = World::with_seed(7);
+    let mut editor = Editor::new();
+
+    let id = editor.spawn(&mut world, Transform::default());
+    let moved = Transform {
+        position: Vec3::new(10.0, 0.0, 0.0),
+        ..Transform::default()
+    };
+    editor.set_transform(&mut world, id, moved).unwrap();
+
+    let hash_after_edit = world.state_hash();
+
+    editor.undo(&mut world); // undo set_transform
+    editor.redo(&mut world); // redo set_transform
+
+    assert_eq!(world.state_hash(), hash_after_edit);
+}
+```
+
+This test validates that the `Editor` undo/redo mechanism preserves the
+determinism invariant: undo followed by redo returns to the exact prior state.
+
+### persistence_integrity_failclosed
+
+Corrupt a persisted snapshot file on disk and confirm the system refuses to load
+it rather than silently returning wrong data.
+
+```rust
+#[test]
+fn persistence_integrity_failclosed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("world_data");
+    let mut store = WorldStore::open(&path).unwrap();
+
+    let mut world = World::with_seed(7);
+    world.spawn(Transform::default());
+    world.step();
+    store.take_snapshot(&world).unwrap();
+
+    // Corrupt the snapshot file
+    let snap_path = path.join("snapshots/000001.snapshot.cbor.zst");
+    let mut data = std::fs::read(&snap_path).unwrap();
+    if let Some(byte) = data.last_mut() {
+        *byte ^= 0xff;
+    }
+    std::fs::write(&snap_path, &data).unwrap();
+
+    // Must fail -- never silently return corrupted state
+    let store2 = WorldStore::open(&path).unwrap();
+    assert!(store2.verify_integrity().is_err());
+}
+```
+
+The system is **fail-closed**: any integrity mismatch between the stored SHA-256
+hash and the recomputed hash produces a `StoreError::IntegrityMismatch` error.
+The engine will never silently load corrupted data.
+
+## Schema Versioning
+
+Persistent files carry two version numbers in `world.meta.json`:
+
+```json
+{
+  "world_schema_version": 1,
+  "event_schema_version": 1,
+  "snapshot_count": 3,
+  "event_segment_count": 12
+}
+```
+
+| Constant | Location | Purpose |
+|----------|----------|---------|
+| `WORLD_SCHEMA_VERSION` | `persist/src/store.rs` | Version of the snapshot serialization format. Governs how `Snapshot` structs are CBOR-encoded. |
+| `EVENT_SCHEMA_VERSION` | `persist/src/store.rs` | Version of the `WorldEvent` enum serialization format. Governs how event log segments are CBOR-encoded. |
+
+### Fail-closed on mismatch
+
+When `WorldStore::open()` reads an existing `world.meta.json`, it checks both
+version numbers against the compiled-in constants. If either version does not
+match, the store refuses to open and returns a `StoreError::SchemaMismatch`:
+
+```rust
+if meta.world_schema_version != WORLD_SCHEMA_VERSION {
+    return Err(StoreError::SchemaMismatch {
+        file_version: meta.world_schema_version,
+        expected_version: WORLD_SCHEMA_VERSION,
+    });
+}
+if meta.event_schema_version != EVENT_SCHEMA_VERSION {
+    return Err(StoreError::SchemaMismatch {
+        file_version: meta.event_schema_version,
+        expected_version: EVENT_SCHEMA_VERSION,
+    });
+}
+```
+
+This ensures that a world saved with schema version N is never silently
+deserialized by code expecting schema version M. When the schema changes,
+a migration path must be provided or the old file must be explicitly discarded.
+
+### When to bump versions
+
+- **Bump `WORLD_SCHEMA_VERSION`** when the `Snapshot` struct layout changes
+  (fields added, removed, or reordered), or when the `EntityData` / `Transform`
+  serialization format changes.
+- **Bump `EVENT_SCHEMA_VERSION`** when the `WorldEvent` enum gains, removes, or
+  restructures variants, or when the CBOR encoding conventions change.
+- **Both versions** should be bumped if a change affects the relationship between
+  snapshots and event logs (e.g., changing how `replay_from` interprets events
+  relative to a snapshot tick).
+
+## Summary
+
+```text
++-------------------------------------------------------+
+|               DETERMINISM BOUNDARY                     |
+|                                                        |
+|  World::entities  (BTreeMap<EntityId, EntityData>)     |
+|  World::tick      (u64)                                |
+|  World::seed      (u64, advanced by splitmix64)        |
+|  World::event_log (Vec<WorldEvent>)                    |
+|  Entity transforms (position, rotation, scale)         |
+|  BTreeMap iteration order (Ord on EntityId/Uuid)       |
+|                                                        |
++-------------------------------------------------------+
+          |                              |
+    state_hash()                  World::replay()
+          |                              |
+    Snapshot::compute_hash()      EventLog::replay_from()
+          |                              |
++-------------------------------------------------------+
+|              OUTSIDE THE BOUNDARY                      |
+|                                                        |
+|  FlyCamera position / orientation                      |
+|  UI state (selection, inspector, undo/redo stacks)     |
+|  Render frame timing (dt)                              |
+|  Window size / aspect ratio                            |
+|  Mouse / keyboard raw input                            |
+|  GPU device, queue, pipelines, buffers                 |
+|  GridPartition streaming cell load order               |
+|                                                        |
++-------------------------------------------------------+
+```

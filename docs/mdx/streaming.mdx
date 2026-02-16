@@ -1,26 +1,59 @@
 # Streaming
 
-Streaming manages world partition, cell loading/unloading, and LOD budgets.
+Streaming manages world partition, cell loading/unloading, and budgets.
 
 ## Design
 
-- **World partition grid:** Fixed-size cells covering the world.
-- **Camera-relative streaming:** Cells load/unload based on distance from the active camera.
-- **Async asset loading:** Cell data loads asynchronously to avoid frame hitches.
-- **LOD budgets:** Level-of-detail transitions managed per cell.
+- **World partition grid:** Fixed-size cells covering the world XZ plane. Entities
+  are assigned to cells based on their XZ position divided by `cell_size`.
+- **Camera-relative streaming:** Cells load/unload based on distance from the viewer's cell.
+- **Active vs preload radius:** Active cells (within `active_radius`) are fully ticked
+  and rendered. Preload cells (within `preload_radius`) are in memory but not ticked.
+- **Per-frame budgets:** `load_budget` and `unload_budget` cap the number of cells
+  loaded/unloaded per frame to prevent hitching.
+- **Frame instrumentation:** `FrameTimer` tracks frame-time history (rolling window)
+  with avg/min/max statistics. `StreamStats` reports per-frame load/unload counts.
 
-## Terrain (v0.1)
+## Configuration
 
-- Heightfield chunks (256x256 samples).
-- Compressed per-chunk storage.
-- Voxel hybrid deferred to later milestones.
+```rust
+StreamConfig {
+    active_radius: 2,    // cells around viewer that are fully active
+    preload_radius: 4,   // cells around viewer that are in memory
+    load_budget: 4,      // max cells to load per frame
+    unload_budget: 4,    // max cells to unload per frame
+}
+```
+
+## API
+
+```rust
+let mut grid = GridPartition::new(16.0);
+grid.rebuild(&world);
+
+let mut stream = StreamState::new(StreamConfig::default());
+let viewer_cell = grid.position_to_cell(camera_pos);
+let (loaded, unloaded) = stream.update(viewer_cell, &grid);
+
+let active = stream.active_cells(viewer_cell);
+let stats = stream.stats();
+```
 
 ## Invariants
 
-- No frame hitching by design goal; measure and regress.
+- No frame hitching by design goal; measure and regress via `FrameTimer`.
 - Cells load/unload without corrupting world truth.
+- Grid partition is derived from kernel-owned entity positions (outside determinism boundary).
+
+## Benchmarks
+
+Run `cargo run --bin bench_stream_partition` from `crates/stream/benches/` to measure:
+- Grid rebuild latency (100 / 1K / 10K entities)
+- Radius query latency (varying radius)
+- Budgeted stream update latency
 
 ## Status
 
 - **M0:** Crate scaffolding.
-- **M4:** Terrain chunks, partition grid, cell streaming, perf benchmarks.
+- **Gapclose:** `GridPartition`, `StreamState` with budgets, `FrameTimer`,
+  `StreamConfig`, `StreamStats`, microbenchmark harness.

@@ -1,35 +1,33 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use worldspace_common::EntityId;
 use worldspace_kernel::{EntityData, World, WorldEvent};
 
 /// A content-addressed snapshot of the world state at a specific tick.
 ///
-/// The hash is computed from the serialized world state, enabling corruption
-/// detection on load.
+/// The hash is computed from the canonical CBOR serialized world state,
+/// enabling corruption detection on load.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snapshot {
     /// The tick at which this snapshot was taken.
     pub tick: u64,
     /// The seed at snapshot time (for deterministic continuation).
     pub seed: u64,
-    /// Serialized entity data keyed by entity id.
-    pub entities: HashMap<EntityId, EntityData>,
-    /// Content hash for integrity verification (simple FNV-1a over serialized data).
-    pub hash: u64,
+    /// Serialized entity data keyed by entity id (BTreeMap for deterministic ordering).
+    pub entities: BTreeMap<EntityId, EntityData>,
+    /// SHA-256 hash for integrity verification (hex encoded).
+    pub hash: String,
 }
 
 impl Snapshot {
     /// Create a snapshot from the current world state.
     pub fn capture(world: &World) -> Self {
-        let entities = world.entities().clone();
+        let entities: BTreeMap<EntityId, EntityData> = world.entities().clone();
         let tick = world.tick();
         let seed = world.seed();
 
-        // Compute a simple content hash for integrity checking.
-        // Workaround: uses FNV-1a over the debug representation instead of
-        // hashing the CBOR bytes. Sufficient for corruption detection.
-        let hash = fnv1a_hash(&format!("{tick}{seed}{entities:?}"));
+        let hash = Self::compute_hash(tick, seed, &entities);
 
         Self {
             tick,
@@ -41,21 +39,41 @@ impl Snapshot {
 
     /// Verify the snapshot integrity by recomputing the hash.
     pub fn verify(&self) -> bool {
-        let expected = fnv1a_hash(&format!("{}{}{:?}", self.tick, self.seed, self.entities));
+        let expected = Self::compute_hash(self.tick, self.seed, &self.entities);
         self.hash == expected
     }
 
     /// Restore a world from this snapshot.
     pub fn restore(&self) -> World {
         let mut world = World::with_seed(self.seed);
+        world.set_tick(self.tick);
         for (id, data) in &self.entities {
             world.spawn_with_id(*id, data.transform);
         }
-        // Advance to the correct tick without generating step events
-        // (the snapshot already captures the state at this tick).
-        // We drain events since restore is not an authoring operation.
+        // Drain events since restore is not an authoring operation.
         world.drain_events();
         world
+    }
+
+    fn compute_hash(tick: u64, seed: u64, entities: &BTreeMap<EntityId, EntityData>) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(tick.to_le_bytes());
+        hasher.update(seed.to_le_bytes());
+        // BTreeMap iterates in deterministic order
+        for (id, data) in entities {
+            hasher.update(id.0.as_bytes());
+            hasher.update(data.transform.position.x.to_le_bytes());
+            hasher.update(data.transform.position.y.to_le_bytes());
+            hasher.update(data.transform.position.z.to_le_bytes());
+            hasher.update(data.transform.rotation.x.to_le_bytes());
+            hasher.update(data.transform.rotation.y.to_le_bytes());
+            hasher.update(data.transform.rotation.z.to_le_bytes());
+            hasher.update(data.transform.rotation.w.to_le_bytes());
+            hasher.update(data.transform.scale.x.to_le_bytes());
+            hasher.update(data.transform.scale.y.to_le_bytes());
+            hasher.update(data.transform.scale.z.to_le_bytes());
+        }
+        format!("{:x}", hasher.finalize())
     }
 }
 
@@ -99,8 +117,6 @@ impl EventLog {
         let mut world = snapshot.restore();
         let mut past_snapshot = false;
         for event in &self.events {
-            // Skip stepped events at or before the snapshot tick.
-            // Once we see a step past the snapshot, replay everything.
             if let WorldEvent::Stepped { tick, .. } = event {
                 if *tick <= snapshot.tick {
                     continue;
@@ -132,8 +148,8 @@ impl EventLog {
 
 /// In-memory snapshot store for persistence.
 ///
-/// Workaround: stores snapshots and event logs in memory instead of on disk.
-/// Swap to file-backed storage when the I/O layer is implemented.
+/// Useful for testing and as a building block. For file-backed persistence,
+/// use `WorldStore`.
 #[derive(Debug, Default)]
 pub struct SnapshotStore {
     snapshots: Vec<Snapshot>,
@@ -182,17 +198,6 @@ impl SnapshotStore {
     }
 }
 
-/// FNV-1a hash for content addressing.
-/// Workaround for a proper cryptographic hash — sufficient for corruption detection.
-fn fnv1a_hash(data: &str) -> u64 {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in data.bytes() {
-        hash ^= byte as u64;
-        hash = hash.wrapping_mul(0x0100_0000_01b3);
-    }
-    hash
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -229,7 +234,7 @@ mod tests {
         let snap = Snapshot::capture(&world);
         let restored = snap.restore();
 
-        assert_eq!(restored.tick(), 0); // restore creates at tick 0 (seed preserved)
+        assert_eq!(restored.tick(), world.tick());
         assert_eq!(restored.seed(), world.seed());
         assert_eq!(restored.entity_count(), world.entity_count());
         assert!(restored.get(id).is_some());
@@ -261,12 +266,10 @@ mod tests {
         store.take_snapshot(&world);
         assert_eq!(store.snapshot_count(), 1);
 
-        // Modify world further
         world.spawn(Transform::default());
         world.step();
         assert_eq!(world.entity_count(), 2);
 
-        // Rollback to snapshot 0
         let rolled_back = store.rollback(0).unwrap();
         assert_eq!(rolled_back.entity_count(), 1);
     }

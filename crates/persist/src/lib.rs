@@ -2,17 +2,16 @@
 //!
 //! # Invariants
 //! - Event log is append-only.
-//! - Snapshots are content-addressed and verifiable.
+//! - Snapshots are content-addressed and verifiable (SHA-256).
 //! - Rollback reconstructs prior state via snapshot + log replay.
-//!
-//! # Workaround
-//! Uses JSON serialization as a workaround for CBOR (serde_cbor is unmaintained).
-//! When a maintained CBOR crate (minicbor or ciborium) is adopted, swap the
-//! serialization format without changing the public API.
+//! - File-backed persistence uses CBOR + zstd compression with hash chain integrity.
+//! - Schema versioning ensures fail-closed on mismatch.
 
 mod snapshot;
+pub mod store;
 
 pub use snapshot::{EventLog, Snapshot, SnapshotStore};
+pub use store::{StoreError, WorldStore};
 
 pub fn crate_info() -> &'static str {
     "worldspace-persist v0.1.0"

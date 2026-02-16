@@ -9,6 +9,9 @@ members = [
     "crates/input",
     "crates/tools",
     "crates/common",
+    "crates/ecs",
+    "crates/assets",
+    "crates/render-wgpu",
     "apps/worldspace-desktop",
     "apps/worldspace-cli",
     "xtask",
@@ -26,11 +29,22 @@ uuid = { version = "1", features = ["v4", "serde"] }
 glam = { version = "0.29", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
+serde_json = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+ciborium = "0.2"
+zstd = "0.13"
+sha2 = "0.10"
+bytemuck = { version = "1", features = ["derive"] }
+winit = "0.30"
+wgpu = "24"
+egui = "0.31"
+egui-wgpu = "0.31"
+egui-winit = "0.31"
+pollster = "0.4"
 
 # Workspace crate cross-references
 worldspace-kernel = { path = "crates/kernel", version = "0.1.0" }
@@ -41,3 +55,6 @@ worldspace-render = { path = "crates/render", version = "0.1.0" }
 worldspace-input = { path = "crates/input", version = "0.1.0" }
 worldspace-tools = { path = "crates/tools", version = "0.1.0" }
 worldspace-common = { path = "crates/common", version = "0.1.0" }
+worldspace-ecs = { path = "crates/ecs", version = "0.1.0" }
+worldspace-assets = { path = "crates/assets", version = "0.1.0" }
+worldspace-render-wgpu = { path = "crates/render-wgpu", version = "0.1.0" }
